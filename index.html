@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Projeto de Vida · casca do app · versão 2.2.2
+     Abre o app (Google Apps Script) dentro desta página, em tela cheia, com o ícone da folha.
+     O link do app não fica neste arquivo nem no GitHub: a Inara cola o link no aparelho, e ele
+     fica guardado só ali (localStorage). Dentro da casca, o Google não mostra o aviso
+     "criado por um usuário do Apps Script". -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Projeto de Vida</title>
+<meta name="theme-color" content="#24382F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Projeto de Vida">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icone-192.png">
+<link rel="manifest" href="manifest.json">
+<script>
+/* Cores decididas antes de a página aparecer: as últimas que o app mandou ou, na primeira vez,
+   as do tema do aparelho. O fundo vai também direto no elemento, por segurança. */
+(function () {
+  var r = document.documentElement, topo = '', baixo = '';
+  try {
+    var c = JSON.parse(localStorage.getItem('pv_casca_cores') || 'null');
+    if (c && c.topo) { topo = c.topo; baixo = c.baixo || c.topo; }
+  } catch (e) {}
+  if (!topo) {
+    var escuro = false;
+    try { escuro = window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+    topo = escuro ? '#101B16' : '#24382F'; baixo = topo;
+  }
+  r.style.setProperty('--casca-topo', topo);
+  r.style.setProperty('--casca-baixo', baixo);
+  r.style.backgroundColor = topo;
+})();
+</script>
+<style>
+:root {
+  --casca-topo: #24382F; --casca-baixo: #24382F;
+  --rosa: #CE7A87; --floresta: #24382F; --creme: #F1ECE8; --creme-2: #B5C1B8; --erro: #F3C4CC;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--casca-topo); }
+body { overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--creme); }
+.faixa { position: fixed; left: 0; right: 0; z-index: 2; pointer-events: none; }
+.faixa-topo { top: 0; height: env(safe-area-inset-top, 0px); background: var(--casca-topo); }
+.faixa-baixo { bottom: 0; height: env(safe-area-inset-bottom, 0px); background: var(--casca-baixo); }
+#app { position: fixed; z-index: 1; border: 0; display: block; background: var(--casca-topo);
+  top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px);
+  width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  height: calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+#app[hidden], #config[hidden] { display: none; }
+#config { position: fixed; inset: 0; z-index: 3; overflow-y: auto; background: var(--casca-topo);
+  padding: calc(env(safe-area-inset-top, 0px) + 40px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  display: flex; justify-content: center; align-items: flex-start; }
+@media (min-height: 640px) { #config { align-items: center; } }
+.caixa { width: 100%; max-width: 420px; text-align: center; }
+.icone { width: 76px; height: 76px; border-radius: 18px; background: var(--rosa); margin: 0 auto 18px;
+  display: flex; align-items: center; justify-content: center; }
+.icone svg { width: 64%; height: 64%; }
+h1 { font-family: "Fraunces", Georgia, "Times New Roman", serif; font-weight: 600; font-size: 30px; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.01em; }
+.sub { color: var(--creme-2); font-size: 16px; line-height: 1.5; margin: 0 0 22px; }
+label { display: block; text-align: left; font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+input { width: 100%; font: inherit; font-size: 16px; color: var(--floresta); background: #FFFFFF; border: 2px solid transparent;
+  border-radius: 12px; padding: 13px 14px; outline: none; }
+input:focus { border-color: var(--rosa); }
+.botoes { display: flex; gap: 10px; margin-top: 12px; }
+button { font: inherit; font-size: 16px; font-weight: 600; border-radius: 999px; padding: 13px 18px; cursor: pointer; border: 2px solid transparent; }
+button:focus-visible { outline: 3px solid var(--creme); outline-offset: 2px; }
+.prim { flex: 1; background: var(--rosa); color: var(--floresta); }
+.sec { background: transparent; color: var(--creme); border-color: rgba(241, 236, 232, 0.45); }
+.msg { min-height: 22px; margin: 12px 0 0; font-size: 15px; line-height: 1.45; text-align: left; }
+.msg.erro { color: var(--erro); }
+.nota { color: var(--creme-2); font-size: 13.5px; line-height: 1.5; margin: 18px 0 0; text-align: left; }
+.visual-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<script>document.body.style.backgroundColor = document.documentElement.style.backgroundColor;</script>
+<div class="faixa faixa-topo" aria-hidden="true"></div>
+<div class="faixa faixa-baixo" aria-hidden="true"></div>
+
+<main id="config" hidden>
+  <div class="caixa">
+    <div class="icone" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#24382F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21c.5 -4.5 2.5 -8 7 -10"/><path d="M9 18c6.218 0 10.5 -3.288 11 -12v-2h-4.014c-9 0 -11.986 4 -12 9c0 1 0 3 2 5h3l.014 0"/></svg>
+    </div>
+    <h1>Projeto de Vida</h1>
+    <p class="sub" id="sub">Cole aqui o link do seu app, o que termina em /exec. É só uma vez neste aparelho.</p>
+    <form id="form" novalidate>
+      <label for="link">Link do app</label>
+      <input id="link" type="url" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+             placeholder="https://script.google.com/…/exec" aria-describedby="msg">
+      <div class="botoes">
+        <button type="button" class="sec" id="colar" hidden>Colar</button>
+        <button type="submit" class="prim" id="abrir">Abrir o app</button>
+      </div>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </form>
+    <p class="nota">O link fica guardado só neste aparelho. Ele não vai para o GitHub nem para nenhum outro lugar.</p>
+  </div>
+</main>
+
+<iframe id="app" title="Projeto de Vida" allow="clipboard-read; clipboard-write" hidden></iframe>
+
+<script>
+(function () {
+  'use strict';
+  var CHAVE_LINK = 'pv_casca_link', CHAVE_CORES = 'pv_casca_cores';
+  var $ = function (id) { return document.getElementById(id); };
+  var config = $('config'), app = $('app'), campo = $('link'), msg = $('msg');
+  var naMaquina = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);   // só para os testes automáticos
+
+  function ler(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function gravar(k, v) { try { localStorage.setItem(k, v); return localStorage.getItem(k) === v; } catch (e) { return false; } }
+
+  /* Aceita o link do App da Web, mesmo com "/u/1/" no meio ou terminando em /dev, e devolve a forma certa. */
+  function normalizar(texto) {
+    var s = String(texto || '').trim();
+    var m = s.match(/https:\/\/script\.google\.com\/(a\/macros\/[^\/\s]+|macros)\/(?:u\/\d+\/)?s\/([A-Za-z0-9_-]{20,})\/(?:exec|dev)\b/);
+    if (m) return 'https://script.google.com/' + m[1] + '/s/' + m[2] + '/exec';
+    if (naMaquina) { var t = s.match(/^http:\/\/(localhost|127\.0\.0\.1):\d+\/?$/); if (t) return t[0]; }
+    return '';
+  }
+
+  function aplicarCores(topo, baixo) {
+    var r = document.documentElement;
+    r.style.setProperty('--casca-topo', topo); r.style.setProperty('--casca-baixo', baixo);
+    r.style.backgroundColor = topo; document.body.style.backgroundColor = topo;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', topo);
+  }
+
+  /* O app conta as cores do topo e da barra de baixo (veja avisarCasca no App_Acoes). */
+  var COR = /^(#[0-9a-fA-F]{3,8}|rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*(,\s*[\d.]+\s*)?\))$/;
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || typeof d !== 'object' || d.pv !== 'cores') return;
+    var origem = String(e.origin || '');
+    var confiavel = /\.googleusercontent\.com$/.test(origem) || origem === 'https://script.google.com' || (naMaquina && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origem));
+    if (!confiavel || !COR.test(String(d.topo || '')) || !COR.test(String(d.baixo || ''))) return;
+    aplicarCores(d.topo, d.baixo);
+    gravar(CHAVE_CORES, JSON.stringify({ topo: d.topo, baixo: d.baixo }));
+  });
+
+  function abrir(link) {
+    config.hidden = true;
+    app.hidden = false;
+    if (app.getAttribute('src') !== link) app.setAttribute('src', link);
+  }
+
+  function pedirLink(texto, erro) {
+    app.hidden = true;
+    config.hidden = false;
+    campo.value = ler(CHAVE_LINK) || campo.value;
+    msg.textContent = texto || '';
+    msg.className = 'msg' + (erro ? ' erro' : '');
+  }
+
+  $('form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var link = normalizar(campo.value);
+    if (!link) {
+      msg.textContent = 'Esse não parece o link do app. Ele começa com https://script.google.com/macros/s/ e termina em /exec.';
+      msg.className = 'msg erro';
+      campo.focus();
+      return;
+    }
+    if (!gravar(CHAVE_LINK, link)) {
+      msg.textContent = 'Este navegador não deixou guardar o link: da próxima vez, ele vai pedir de novo.';
+      msg.className = 'msg erro';
+    }
+    if (/trocar/.test(location.hash)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+    abrir(link);
+  });
+
+  /* Botão Colar: só aparece onde o navegador deixa ler a área de transferência. */
+  if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+    var colar = $('colar');
+    colar.hidden = false;
+    colar.addEventListener('click', function () {
+      navigator.clipboard.readText().then(function (t) {
+        campo.value = String(t || '').trim();
+        msg.textContent = normalizar(campo.value) ? 'Link colado. Toque em Abrir o app.' : 'O que estava copiado não é o link do app.';
+        msg.className = 'msg' + (normalizar(campo.value) ? '' : ' erro');
+      }).catch(function () {
+        msg.textContent = 'Não deu para colar por aqui. Toque no campo, segure e escolha Colar.';
+        msg.className = 'msg erro';
+        campo.focus();
+      });
+    });
+  }
+
+  /* Trocar o link depois: abra o endereço da casca com #trocar no fim. */
+  window.addEventListener('hashchange', function () { if (/trocar/.test(location.hash)) pedirLink('Cole o link novo e toque em Abrir o app.'); });
+
+  var salvo = ler(CHAVE_LINK);
+  if (salvo && !/trocar/.test(location.hash)) abrir(salvo);
+  else pedirLink(salvo ? 'Cole o link novo e toque em Abrir o app.' : '');
+})();
+</script>
+<noscript><p style="padding:24px;color:#F1ECE8">Esta página precisa de JavaScript ligado para abrir o app.</p></noscript>
+</body>
+</html>
